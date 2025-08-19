@@ -44,10 +44,25 @@ The pipeline enables early, adaptive detection of attacker behavior while mappin
 ### 4. Risk Scoring with VirusTotal
 - **Notebook**: `scoring/ip_risk_score_scraping.ipynb`
   - Queries VirusTotal for IPs observed in honeypots.
+  - ⚠️ **Important**: You must provide your own VirusTotal API key.  
+    In the notebook, replace the placeholder:
+    ```python
+    api_key_list = []
+    ```
+    with your actual key(s), for example:
+    ```python
+    api_key_list = ["your_api_key_here"]
+    ```
+    If you have multiple API keys, you can list them all, and the script will rotate between them.
+
   - Produces:
     - `ip_report_crm_testing.csv`
     - `ip_report_pending_testing.csv`
     - `ip_report_ebilling_testing.csv`
+    - `ip_report_crm.csv`
+    - `ip_report_pending.csv`
+    - `ip_report_ebilling.csv`
+
 
 - **Notebook**: `scoring/levenshtein_for_testset.ipynb`
   - Requires:
