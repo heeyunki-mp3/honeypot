@@ -1,34 +1,76 @@
-# honeypot
+# Real-Time Risk Scoring of Ongoing Cyber Attacks
 
-Raw data from Cowrie honnypot is in `./raw_data`.
-
-In order to replicate the procedure in the paper, follow this step:
-
-Preprocessing:
-1. run obtain command to description data file from https://github.com/fabianzuluaga48/codeBERT-Clustering-Task
-
-2. run `./data_cleansing.ipynb` and make sure you obtained conversion data and named it `command_to_description.csv` in the same directory. This will create `cleaned_csv`. Here, we have done the preprocessing steps. This data is reformatted again and saved to `./data/testing_data.csv` and `./data/training_data.csv` and
-
-Training:
-
-3. Run `Cluster_Training_Data.ipynb`. Which represents the Training Steps. This will create `./all_normalized_fk.csv` which is post-processed to `./Bayes/data/training_data.csv`. Similar steps are done for testing sets, but wihtout classifying its cluster but formatted into similar structure to the training data and saved as `./Bayes/data/testing_data.csv`
-
-Classification / Prediction Testing:
-
-4. To test the classification method, run `bayes.ipynb`. This creates series of csv files:
-`ground_truth.csv`: labels for each test data
-`entropy_over_steps.csv`: each row represents one sessions's entropy over number of commands provided (each column represents steps more right- more commands provided)
-`entropy_to_be_graphed.csv` : reformatted from `entropy_over_steps.csv`. First column is the number of command provided and second column is the entropy at the given number of command.
--> this is reformatted to `entropy_to_be_graphed.xlsx` to be graphed
-`right_value_moment.csv`: For each session, the entropy that it first reached when the correct classification wa made
-`switched_ones.csv`: similar format as `entropy_to_be_graphed.csv` but only contains those ones where it was classified as wrong group but later changed its classification to the correct ones. 
+This repository provides an **end-to-end framework** for classifying and risk-scoring cyberattacks in real time using honeypot data.  
+It combines **semantic command clustering**, **cluster-wise Markov chains**, and **Bayesian online classification** with entropy-based evaluation and **VirusTotal risk scoring**.  
+The pipeline enables early, adaptive detection of attacker behavior while mapping each session to an external maliciousness score.
 
 
-Risk Scoring:
-Obtain the risk score data from Virus Total using `./scoring/ip_risk_score_scraping.ipynb`
-This will create 3 csv files (`./scoring/ip_report_crm_testing.csv`, `./scoring/ip_report_pending_testing.csv`, `./scoring/ip_report_ebilling_testing`) for each honeypots that contains the ip caught on those honeypot's risk data from Virus Total. 
+## Pipeline Overview
 
-5. The risk score will be given using `./scoring/levenshtein_for_testset.ipynb`
-- requires three ip report csv files from `./scoring/ip_risk_score_scraping.ipynb`
-- `./scoring/TEST_all_normlized_IP_fk_ipip.csv` (sorry this was weird side output of some script but happened to use it for the final version)
-- The risk score of each clusters are printed on the notebook.
+### 1. Preprocessing
+- **Input**: Cowrie honeypot logs (`raw_data/`).
+- **Notebook**: `raw_data/data_cleansing.ipynb`
+- **Steps**:
+  - Download `command_to_description.csv` from [CodeBERT Clustering Task](https://github.com/fabianzuluaga48/codeBERT-Clustering-Task).
+  - Normalize and clean sessions → outputs `*_clean.csv` in `cleaned_csv/`.
+  - Generate:
+    - `Bayes/data/training_data.csv`
+    - `Bayes/data/testing_data.csv`
+
+---
+
+### 2. Clustering & Training
+- **Notebook**: `Cluster_Training_Data.ipynb`
+- **Method**:  
+  Cluster commands using semantic embeddings + normalized Levenshtein distance.  
+  Produces formatted datasets for Bayesian classification.
+
+---
+
+### 3. Classification & Entropy Evaluation
+- **Notebook**: `Bayes/bayes.ipynb`
+- **Method**:  
+  - Bayesian online classification over cluster-wise Markov chains.  
+  - Entropy is tracked at each command step to evaluate confidence.
+- **Outputs** (in `Bayes/results/`):
+  - `entropy_over_steps.csv`: entropy progression per session.
+  - `entropy_to_be_graphed.csv` / `.xlsx`: reformatted for visualization.
+  - `right_value_moment.csv`: entropy at the step when the correct class was first reached.
+  - `switched_ones.csv`: sessions initially misclassified but corrected later.
+  - `ground_truth.csv`: true labels for test sessions.
+
+---
+
+### 4. Risk Scoring with VirusTotal
+- **Notebook**: `scoring/ip_risk_score_scraping.ipynb`
+  - Queries VirusTotal for IPs observed in honeypots.
+  - Produces:
+    - `ip_report_crm_testing.csv`
+    - `ip_report_pending_testing.csv`
+    - `ip_report_ebilling_testing.csv`
+
+- **Notebook**: `scoring/levenshtein_for_testset.ipynb`
+  - Requires:
+    - The three VirusTotal CSVs above.
+    - `TEST_all_normalized_IP_fk_ipip.csv` (normalized session/IP mapping).
+    - `Bayes/data/{training_data.csv, testing_data.csv, ground_truth.csv}`
+  - Computes **cluster-level risk scores**.
+
+---
+
+## Key Concepts
+
+- **Markov Chains**: model the sequence of commands within each cluster.  
+- **Bayesian Updating**: update posterior probabilities as each new command arrives.  
+- **Entropy**: used as a stopping rule — low entropy = high confidence classification.  
+- **VirusTotal Risk Scores**: provide external maliciousness scores, enabling session-level risk mapping.
+
+---
+
+## Requirements
+
+- Python 3.10+
+- Jupyter Notebook
+- Dependencies:
+  - `pandas`, `numpy`, `scikit-learn`, `tqdm`, `matplotlib`, `requests`
+- VirusTotal API key (`VT_API_KEY`) for risk scoring.
